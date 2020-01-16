@@ -1,7 +1,7 @@
 
 
 # QtRename
-![QtRename Logo](https://github.com/amad3v/QtFind/raw/master/qtrename/app.png)
+![QtRename Logo](https://github.com/amad3v/QtRename/raw/master/qtrename/app.png)
 
 feature-rich app to rename files for GNU/Linux and Windows
 
