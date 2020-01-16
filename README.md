@@ -14,7 +14,7 @@ feature-rich app to rename files for GNU/Linux and Windows
 - [Changelog](#changelog)
 
 ## **Installation**
-
+### Linux:
     pip install qtrename
 
 To avoid running the app from the command line, you need to add it to your apps menu:
@@ -25,6 +25,8 @@ To avoid running the app from the command line, you need to add it to your apps 
 
 Head to your apps menu, type qtfind or you can find it under Accessories.
 
+### Windows:
+Download the installer from [here](https://github.com/amad3v/QtRename/releases/download/v1.0.0/QtRename.v1.0.0.exe)
 
 ## **Description**
 
@@ -103,4 +105,4 @@ See the [GNU General Public Licence](https://www.gnu.org/licenses/gpl-3.0.html),
 	- Initial release
 
 
-Copyright :copyright: 2019 - amad3v
+Copyright :copyright: 2020 - amad3v
