@@ -24,7 +24,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='qtrename18',
+    name='qtrename',
     packages = ['qtrename'],
     version='1.0.0',
     description='feature-rich app to rename files for GNU/Linux and Windows',
