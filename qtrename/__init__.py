@@ -18,7 +18,7 @@
 ##############################################################################
 ############################################################################
 
-__all__ = ["About", "Errors", "mainwindow", "preview", "spaces", "worker", "add_remove", "casing", "fetcher", "move", "qtrenamer_rc", "TableView", "Animation", "common", "main", "counters", "replace", "Theme"]
+__all__ = ["About", "Errors", "mainwindow", "preview", "spaces", "worker", "add_remove", "casing", "move", "qtrenamer_rc", "TableView", "Animation", "common", "main", "counters", "replace", "Theme"]
 
 from . import About
 from . import Errors
@@ -28,7 +28,6 @@ from . import spaces
 from . import worker
 from . import add_remove
 from . import casing
-from . import fetcher
 from . import move
 from . import qtrenamer_rc
 from . import TableView
