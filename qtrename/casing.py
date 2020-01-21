@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,9 +16,8 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
 
-from pathlib import Path
 from random import choice
 
 apply_case = {'same': lambda x: x,

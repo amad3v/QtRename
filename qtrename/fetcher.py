@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,22 +16,21 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
 
-from pathlib import Path
-
-from PyQt5.QtCore import QDirIterator, QDir, Qt, QSize, QFileInfo
+from PyQt5.QtCore import QDirIterator, QDir, Qt, QSize, QFileInfo, QSortFilterProxyModel
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QIcon
 from PyQt5.QtWidgets import QFileIconProvider
 
 import qtrename.counters
-from qtrename.common import ProcessName
+from qtrename.common import ProcessName, path_func
 from qtrename.preview import get_preview_replace
 
 
 class Fetcher:
-    def __init__(self, parent=None):
-        self.__smi = QStandardItemModel(parent)
+    def __init__(self):
+        self.proxy=QSortFilterProxyModel()
+        self.__smi = QStandardItemModel()
         self.__smi.setHorizontalHeaderLabels(('Before', 'After', '', '', ''))
         self.__dir = ''
         self.__filter_files = None
@@ -45,7 +44,7 @@ class Fetcher:
         self.__file_name = ProcessName.FILENAME
 
     def __setup_icons(self):
-        file_info = QFileInfo(str(Path().home()))
+        file_info = QFileInfo(str(path_func().home()))
         self.__icons = (QIcon(QFileIconProvider().icon(file_info).pixmap(QSize(32, 32), QIcon.Disabled)),
                         QIcon(QFileIconProvider().icon(file_info).pixmap(QSize(32, 32))))
 
@@ -69,7 +68,7 @@ class Fetcher:
 
     def __load_model(self):
         while self.__dir_iterator.hasNext():
-            item = Path(self.__dir_iterator.next())
+            item = path_func(self.__dir_iterator.next())
             next_element = item.name
             file_info = self.__dir_iterator.fileInfo()
             sort_order = 0 if file_info.isDir() else 1
@@ -88,28 +87,33 @@ class Fetcher:
             ))
 
     def rename_files(self, func_args):
-        if not func_args[0]:
+        selection = func_args[0]
+        func = func_args[1]
+
+        if not selection:
             for index_row in range(self.__smi.rowCount()):
                 if self.__smi.item(index_row, 3).data(Qt.DisplayRole) == 'False':
-                    func_args[1](self.__smi.item(index_row, 2).data(Qt.DisplayRole),
-                                 self.__smi.item(index_row, 0).data(Qt.DisplayRole),
-                                 self.__smi.item(index_row, 1).data(Qt.DisplayRole))
+                    func(self.__smi.item(index_row, 2).data(Qt.DisplayRole),
+                         self.__smi.item(index_row, 0).data(Qt.DisplayRole),
+                         self.__smi.item(index_row, 1).data(Qt.DisplayRole))
 
         else:
-            for index in func_args[0]:
+            for index in selection:
+                print(type(self.__smi.item(index.row(), 3).data(Qt.DisplayRole)))
                 if self.__smi.item(index.row(), 3).data(Qt.DisplayRole) == 'False':
-                    func_args[1](self.__smi.item(index.row(), 2).data(Qt.DisplayRole),
-                                 self.__smi.item(index.row(), 0).data(Qt.DisplayRole),
-                                 index.data(Qt.DisplayRole))
+                    func(self.__smi.item(index.row(), 2).data(Qt.DisplayRole),
+                         self.__smi.item(index.row(), 0).data(Qt.DisplayRole),
+                         self.__smi.item(index.row(), 1).data(Qt.DisplayRole))
 
     def load_preview(self, func_args):
         selection = func_args[0]
+        func = func_args[1]
         qtrename.counters.p_counter = 0
 
         if not selection:
             for index_row in range(self.__smi.rowCount()):
                 if self.__smi.item(index_row, 3).data(Qt.DisplayRole) == 'False':
-                    new_name = func_args[1](self.__smi.item(index_row, 0).data(Qt.DisplayRole), func_args[2:])
+                    new_name = func(self.__smi.item(index_row, 0).data(Qt.DisplayRole), func_args[2:])
                     self.__smi.item(index_row, 1).setText(new_name)
         else:
             for index_row in range(self.__smi.rowCount()):
@@ -117,7 +121,7 @@ class Fetcher:
 
             for index in selection:
                 if self.__smi.item(index.row(), 3).data(Qt.DisplayRole) == 'False':
-                    new_name = func_args[1](index.data(Qt.DisplayRole), func_args[2:])
+                    new_name = func(index.data(Qt.DisplayRole), func_args[2:])
                     self.__smi.item(index.row(), 1).setText(new_name)
 
     def start_collector(self):
@@ -131,5 +135,6 @@ class Fetcher:
 
     @property
     def smi_model(self):
+        self.proxy.setSourceModel(self.__smi)
         self.__smi.sort(4, Qt.AscendingOrder)
         return self.__smi

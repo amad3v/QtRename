@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,7 +16,7 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
     
     
 from PyQt5.QtCore import *
@@ -24,7 +24,6 @@ from PyQt5.QtCore import *
 
 class WorkerSignals(QObject):
     done = pyqtSignal()
-
 
 class Worker(QRunnable):
     def __init__(self, func, args=None):

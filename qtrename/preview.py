@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,13 +16,10 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
 
-
-from enum import Enum
-from pathlib import Path
 from qtrename.casing import set_case, apply_case
-from qtrename.common import ProcessName
+from qtrename.common import ProcessName, path_func
 from qtrename.move import g_move_general
 from qtrename.counters import g_preview_counter, g_preview_renumber
 from qtrename.replace import g_replace_general
@@ -31,10 +28,10 @@ from qtrename.spaces import g_replace_spaces
 
 def get_name_part(text, flag, has_dot):
     if flag == ProcessName.FILENAME:
-        return str(Path(text).stem)
+        return str(path_func(text).stem)
 
     if flag == ProcessName.EXTENSION:
-        return str(Path(text).suffix)[1:] if has_dot else str(Path(text).suffix)
+        return str(path_func(text).suffix)[1:] if has_dot else str(path_func(text).suffix)
 
     if flag == ProcessName.FULLNAME:
         return text
@@ -46,10 +43,10 @@ def set_name_part(mod_text, text, flag, has_dot):
     if not mod_text: return ''
 
     if flag == ProcessName.FILENAME:
-        return f'{mod_text}{str(Path(text).suffix)}'
+        return f'{mod_text}{str(path_func(text).suffix)}'
 
     if flag == ProcessName.EXTENSION:
-        return f'{str(Path(text).stem)}.{mod_text}' if has_dot else f'{str(Path(text).stem)}{mod_text}'
+        return f'{str(path_func(text).stem)}.{mod_text}' if has_dot else f'{str(path_func(text).stem)}{mod_text}'
 
     if flag == ProcessName.FULLNAME:
         return mod_text
@@ -74,8 +71,8 @@ def get_preview_casing(element, func_args):
     ext_case = func_args[1]
     keep = func_args[2]
 
-    tmp_fname = str(Path(element).stem)
-    tmp_ename = str(Path(element).suffix)
+    tmp_fname = str(path_func(element).stem)
+    tmp_ename = str(path_func(element).suffix)
 
     if keep:
         full_name = set_case(tmp_fname, keep, apply_case[file_case]) + \

@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,31 +16,32 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
- 
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont
+############################################################################
+
+from PyQt5 import QtGui
+from PyQt5.QtCore import Qt, QSize, QCoreApplication
+from PyQt5.QtGui import QFont, QShowEvent
 from PyQt5.QtWidgets import QDialog, QLabel, QVBoxLayout
+
 from qtrename.common import set_bold
+
+tr_ = QCoreApplication.translate
 
 
 class About(QDialog):
-    def __init__(self, parent, icon, title, description, link):
+    def __init__(self, parent, icon, title, description, link, warning, license):
         super().__init__(parent)
         self.setWindowTitle('About QtRename')
         self.app_icon = parent.windowIcon()
         self.logo = icon
-        self.lbl_name = QLabel(title)
-        self.lbl_description = QLabel(description)
-        self.lbl_link = QLabel(f'<a href="{link}">GitHub.com</a>')
-        self.lbl_copyright = QLabel('\nCopyright \xa9 2020 - amad3v\n')
-        self.lbl_warning = QLabel('This program comes with absolutely no warranty.')
-        self.license_link = 'https://www.gnu.org/licenses/gpl-3.0.html'
-        self.license_text = f'See the <a href="{self.license_link}">GNU General Public License</a>' \
-                            ' version 3 or later for details.'
-
+        self.lbl_name = QLabel(title, self)
+        self.lbl_description = QLabel(description, self)
+        self.lbl_link = QLabel(f'<a href="{link}">GitHub.com</a>', self)
+        self.lbl_copyright = QLabel('\nCopyright \xa9 2020 - amad3v\n', self)
+        self.lbl_warning = QLabel(warning, self)
         self.small_print = QFont()
         self.small_print.setPointSize(8)
+        self.lbl_license = QLabel(license, self)
 
         self.__init_ui()
 
@@ -70,7 +71,6 @@ class About(QDialog):
         self.lbl_warning.setFont(self.small_print)
 
         # license
-        self.lbl_license = QLabel(self.license_text)
         self.lbl_license.setOpenExternalLinks(True)
         self.lbl_license.setAlignment(Qt.AlignCenter)
         self.lbl_license.setFont(self.small_print)
@@ -88,5 +88,9 @@ class About(QDialog):
         # dialog settings
         self.setWindowIcon(self.app_icon)
         self.setWindowModality(Qt.ApplicationModal)
-        self.setFixedSize(QSize(400, 310))
         self.setLayout(self.global_layout)
+
+    def showEvent(self, a0: QShowEvent) -> None:
+        self.setFixedSize(self.size())
+        super().showEvent(a0)
+

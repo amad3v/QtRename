@@ -1,5 +1,6 @@
 
 
+
 # QtRename
 ![QtRename Logo](https://github.com/amad3v/QtRename/raw/master/qtrename/app.png)
 
@@ -26,7 +27,7 @@ To avoid running the app from the command line, you need to add it to your apps 
 Head to your apps menu, type qtfind or you can find it under Accessories.
 
 ### Windows:
-Download the installer from [here](https://github.com/amad3v/QtRename/releases/download/v1.0.0/QtRename.v1.0.0.exe)
+- Download the installer from [here](https://github.com/amad3v/QtRename/releases/download/v1.0.0/QtRename.v1.0.0.exe) [Require [Microsoft Visual C++ 2015 Redistributable](https://www.microsoft.com/en-gb/download/details.aspx?id=48145)]
 
 ## **Description**
 
@@ -101,7 +102,13 @@ See the [GNU General Public Licence](https://www.gnu.org/licenses/gpl-3.0.html),
 |![move](https://github.com/amad3v/QtRename/raw/master/docs/move.png)|![spaces](https://github.com/amad3v/QtRename/raw/master/docs/spaces.png)|
 |![counter](https://github.com/amad3v/QtRename/raw/master/docs/counter.png)|![enumerate](https://github.com/amad3v/QtRename/raw/master/docs/enum.png)|
 ## **Changelog**
-- 1.0.0:
+- **1.1.0:**
+	- Fixed MVC bugs
+	- Fixed folders/Files opened incrementally
+	- Adjusted GUI for low resolution screens
+	- Added french translation
+	- Minor improvements
+- **1.0.0:**
 	- Initial release
 
 

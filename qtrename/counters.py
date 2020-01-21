@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,17 +16,7 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
-
-with_renumber = (
-    'All numbers', 'The first', 'The second', 'The third', 'The fourth', 'The fifth', 'The sixth', 'The seventh',
-    'The eighth', 'The ninth', 'The second to last', 'The last number')
-
-replace_with = (
-    'Replace with counter', 'Replace with', 'Insert before', 'Insert after', 'Zero pad to', 'Add', 'Subtract',
-    'Multiply by', 'Divide by', 'Remove', 'Round to')
-
-lst_counter = ('At the beginning', 'At the end')
+############################################################################
 
 p_counter = 0
 p_enumerate = 0

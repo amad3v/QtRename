@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,43 +16,51 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
 
 import json
-from pathlib import Path
+from qtrename.common import path_func
 
 
-class Theme:
+class Settings:
     def __init__(self, config_folder):
-        self.__theme_dir = Path(Path.home().joinpath(config_folder))
-        self.__theme_file = Path(self.__theme_dir.joinpath('theme'))
+        self.__settings_dir = path_func(path_func.home().joinpath(config_folder))
+        self.__settings_file = path_func(self.__settings_dir.joinpath('settings'))
 
-        self.__theme = {}
-        self.__is_theme_dir()
-        self.__load_theme()
+        self.__settings = {}
+        self.__is_settings_dir()
+        self.__load_settings()
 
-    def __is_theme_dir(self):
-        if not self.__theme_dir.is_dir():
-            self.__theme_dir.mkdir(parents=True, exist_ok=True)
+    def __is_settings_dir(self):
+        if not self.__settings_dir.is_dir():
+            self.__settings_dir.mkdir(parents=True, exist_ok=True)
 
-    def __load_theme(self):
-        theme_file = f'{str(self.__theme_file)}'
+    def __load_settings(self):
+        settings_file = f'{str(self.__settings_file)}'
 
         try:
-            with open(theme_file, 'r') as db:
-                self.__theme = json.load(db)
+            with open(settings_file, 'r') as db:
+                self.__settings = json.load(db)
         except:
-            self.__theme = {'theme': 'default', 'tone': 'default'}
+            self.__settings = {'theme': 'default', 'tone': 'default', 'lang': 'en'}
 
-    def __save_theme(self):
-        with open(str(self.__theme_file), 'w') as db:
-            json.dump(self.__theme, db)
+    def __save_settings(self):
+        with open(str(self.__settings_file), 'w') as db:
+            json.dump(self.__settings, db)
 
     def save_theme(self, theme, tone):
-        self.__theme['theme'] = theme
-        self.__theme['tone'] = tone
-        self.__save_theme()
+        self.__settings['theme'] = theme
+        self.__settings['tone'] = tone
+        self.__save_settings()
+
+    def save_lang(self, lang):
+        self.__settings['lang'] = lang
+        self.__save_settings()
 
     @property
     def get_theme(self):
-        return self.__theme['theme'], self.__theme['tone']
+        return self.__settings['theme'], self.__settings['tone']
+
+    @property
+    def get_language(self):
+        return self.__settings['lang']

@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,15 +16,15 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
- 
+############################################################################
+
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QMovie, QColor, QResizeEvent
+from PyQt5.QtGui import QPalette, QMovie, QColor
 from PyQt5.QtWidgets import QWidget, QLabel
 
 
 class Animation(QWidget):
-    def __init__(self, parent, file_name, rect):
+    def __init__(self, parent, file_name, rect, bg):
         super().__init__(parent)
         self.__m_widget = QWidget(self)
         self.__movie = QMovie()
@@ -32,14 +32,11 @@ class Animation(QWidget):
         self.__movie_label = QLabel(self.__m_widget)
 
         self.__m_widget.setGeometry(rect)
-        palette = QPalette()
-        palette.setColor(QPalette.Background, QColor(0, 0, 0, 0))
         self.__m_widget.setAutoFillBackground(True)
-        self.__m_widget.setPalette(palette)
 
         self.__movie_label.setAlignment(Qt.AlignCenter)
         self.__movie_label.setMovie(self.__movie)
-        self.setup_movie(file_name)
+        self.setup_animation(file_name, bg)
         self.movie_stop()
 
     def movie_start(self):
@@ -50,8 +47,12 @@ class Animation(QWidget):
         self.hide()
         self.__movie.stop()
 
-    def setup_movie(self, file_name):
+    def setup_animation(self, file_name, color):
         self.__movie.setFileName(file_name)
 
-    def resizeEvent(self, a0):
+        palette = QPalette()
+        palette.setColor(QPalette.Background, color)
+        self.__m_widget.setPalette(palette)
+
+    def resizeEvent(self, event):
         self.__movie_label.setGeometry(int((self.width() - 200) / 2), int((self.height() - 200) / 2), 200, 200)

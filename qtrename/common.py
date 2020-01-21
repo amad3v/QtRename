@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,18 +16,20 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+############################################################################
 
 import platform
 import re
 from enum import Enum
-from pathlib import Path
+from pathlib import WindowsPath, PosixPath
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import QDirIterator
 from PyQt5.QtGui import QFont, QPalette, QPixmap, QIcon, QColor
 
 os_type = platform.system()
+path_style = {'Windows': WindowsPath, 'Linux': PosixPath,'Darwin': PosixPath}
+path_func = path_style[os_type]
 
 PRIMARY_DARK = QColor(53, 53, 53)
 TEXT_DARK = QColor(255, 255, 255)
@@ -41,22 +43,22 @@ flags_dict = {
     False: QDirIterator.NoIteratorFlags
 }
 
-animation_tones = {'green': ":/qtrenamer/anim/animg",
-                   'pink': ":/qtrenamer/anim/animp",
-                   'orange': ":/qtrenamer/anim/animo",
-                   'blue': ":/qtrenamer/anim/animd",
-                   'default': ":/qtrenamer/anim/animd"}
+animation_tones = {'green': (":/qtrenamer/anim/animg", QColor(42, 218, 130, 64)),
+                   'pink': (":/qtrenamer/anim/animp", QColor(218, 42, 130, 64)),
+                   'orange': (":/qtrenamer/anim/animo", QColor(255, 102, 0, 64)),
+                   'blue': (":/qtrenamer/anim/animd", QColor(42, 130, 218, 64)),
+                   'default': (":/qtrenamer/anim/animd", QColor(42, 130, 218, 64))}
 
 dark_theme = {'p_color': (PRIMARY_DARK, QPalette.Window, QPalette.AlternateBase, QPalette.Button),
               't_color': (TEXT_DARK, QPalette.WindowText, QPalette.ToolTipBase, QPalette.ToolTipText,
                           QPalette.Text, QPalette.ButtonText, QPalette.HighlightedText)}
 
 dict_tones = {
-    'orange': (QColor(255, 102, 0, 128), QColor(255, 102, 0), 3, 'Dark &Orange'),
-    'green': (QColor(42, 218, 130, 128), QColor(42, 218, 130), 2, 'Dark &Green'),
-    'pink': (QColor(218, 42, 130, 128), QColor(218, 42, 130), 4, 'Dark &Pink'),
-    'blue': (QColor(42, 130, 218, 128), QColor(42, 130, 218), 1, 'Dark &Blue'),
-    'default': (None, None, 0, '&Default')
+    'orange': (QColor(255, 102, 0, 128), QColor(255, 102, 0), 3, 'dark_orange'),
+    'green': (QColor(42, 218, 130, 128), QColor(42, 218, 130), 2, 'dark_green'),
+    'pink': (QColor(218, 42, 130, 128), QColor(218, 42, 130), 4, 'dark_pink'),
+    'blue': (QColor(42, 130, 218, 128), QColor(42, 130, 218), 1, 'dark_blue'),
+    'default': (None, None, 0, 'default')
 }
 
 
@@ -86,13 +88,12 @@ labels2errors = (
 )
 
 root_dir = {
-    'Windows': Path.home().drive,
-    'Linux': Path.home().root,
-    'Darwin': Path.home().root
+    'Windows': path_func.home().drive,
+    'Linux': path_func.home().root,
+    'Darwin': path_func.home().root
 }
 
 list_old_names = []
-
 
 
 class ProcessName(Enum):
@@ -116,7 +117,10 @@ def undo_rename():
     for old_file, new_file in list_old_names:
         try:
             if new_file.exists():
-                raise FileExistsError
+                if os_type != 'Windows':
+                    raise FileExistsError
+                elif (str(old_file).lower() != str(new_file).lower()) and os_type == 'Windows':
+                    raise FileExistsError
 
             if not old_file.exists():
                 raise FileNotFoundError
@@ -124,32 +128,33 @@ def undo_rename():
             old_file.rename(new_file)
 
         except FileExistsError:
-            errors_map['exists'].append(f'{str(old_file)} -> {Path(new_file).name}')
+            errors_map['exists'].append(f'{str(old_file)} -> {path_func(new_file).name}')
 
         except PermissionError:
-            errors_map['perms'].append(f'{str(old_file)} -> {Path(new_file).name}')
+            errors_map['perms'].append(f'{str(old_file)} -> {path_func(new_file).name}')
 
         except FileNotFoundError:
-            errors_map['not_found'].append(f'{str(old_file)} -> {Path(new_file).name}')
+            errors_map['not_found'].append(f'{str(old_file)} -> {path_func(new_file).name}')
 
-        except Exception:
-            errors_map['other'].append(f'{str(old_file)} -> {Path(new_file).name}')
+        except Exception as e:
+            errors_map['other'].append(f'{e}:\n{str(old_file)} -> {path_func(new_file).name}')
         finally:
-            continue
-
-    list_old_names.clear()
+            list_old_names.clear()
 
 
 def rename_items(parent, old_name, new_name):
     if not new_name: return
 
     global list_old_names
-    old_file = Path(parent).joinpath(old_name)
-    new_file = Path(parent).joinpath(new_name)
+    old_file = path_func(parent).joinpath(old_name)
+    new_file = path_func(parent).joinpath(new_name)
 
     try:
         if new_file.exists():
-            raise FileExistsError
+            if os_type != 'Windows':
+                raise FileExistsError
+            elif (old_name.lower() != new_name.lower()) and os_type == 'Windows':
+                raise FileExistsError
 
         if not old_file.exists():
             raise FileNotFoundError
@@ -166,8 +171,8 @@ def rename_items(parent, old_name, new_name):
     except PermissionError:
         errors_map['perms'].append(f'{str(old_file)} -> {new_name}')
 
-    except Exception:
-        errors_map['other'].append(f'{str(old_file)} -> {new_name}')
+    except Exception as e:
+        errors_map['other'].append(f'{e}:\n{str(old_file)} -> {new_name}')
 
 
 def set_bold(is_bold) -> QFont:
@@ -203,5 +208,5 @@ def get_icon(resource):
 
 def validate_path(directory):
     if not directory: return False
-    if Path(directory).is_dir(): return True
+    if path_func(directory).is_dir(): return True
     return False

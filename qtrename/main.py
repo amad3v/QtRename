@@ -1,4 +1,4 @@
- ############################################################################
+############################################################################
 ##############################################################################
 ##   Feature-rich app to rename files for GNU/Linux and Windows             ##
 ##   Copyright (C) 2020  Mohamed Jouini                                     ##
@@ -16,22 +16,28 @@
 ##   You should have received a copy of the GNU General Public License      ##
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
- ############################################################################
+##############################################################################
 
 import sys
 
-from PyQt5.QtCore import (qInstallMessageHandler, QtFatalMsg, QtCriticalMsg, QRect, QThreadPool, pyqtSlot)
-from PyQt5.QtWidgets import (QCompleter, QFileSystemModel, qApp, QFileDialog, QMessageBox, QApplication)
+from PyQt5.QtCore import (qInstallMessageHandler, QtFatalMsg, QtCriticalMsg, QRect, QThreadPool,
+                          pyqtSlot, QTranslator, QEvent, QCoreApplication, pyqtSignal)
+from PyQt5.QtWidgets import (QCompleter, QFileSystemModel, qApp, QFileDialog, QMessageBox, QApplication, QAction)
 
 from qtrename.About import About
 from qtrename.Animation import Animation
-from qtrename.Theme import Theme
+from qtrename.TableView import DataSource
+from qtrename.Theme import Settings
 from qtrename.add_remove import add_remove_chars
 from qtrename.common import *
 from qtrename.fetcher import *
 from qtrename.mainwindow import MainWindow
 from qtrename.preview import *
 from qtrename.worker import Worker
+
+app = QApplication(sys.argv)
+translator = QTranslator()
+tr_ = QCoreApplication.translate
 
 if os_type == 'Windows':
     import ctypes
@@ -41,16 +47,22 @@ if os_type == 'Windows':
 
 
 class QtRename(MainWindow):
+    done_clearing = pyqtSignal(bool)
+
     def __init__(self):
         super().__init__()
-        self.swap_enabled = False
-        self.thread_pool = QThreadPool()
-        self.completer = QCompleter()
-        self.fetcher = Fetcher(self)
+        self.data_source = DataSource(self)
+        self.table_model = QStandardItemModel(self)
+        self.thread_pool = QThreadPool(self)
+        self.thread_pool.setMaxThreadCount(1)
+        self.completer = QCompleter(self)
         self.fsm = QFileSystemModel(self.completer)
-        self.theme = Theme('.config/qtrename')
-        self.animation = Animation(self, animation_tones[self.theme_name[1]], QRect(0, 0, self.width(), self.height()))
-
+        self.settings = Settings('.config/qtrename')
+        self.animation = Animation(self, animation_tones[self.theme_name[1]][0],
+                                   QRect(0, 0, self.width(), self.height()),
+                                   animation_tones[self.theme_name[1]][1])
+        self.curr_lang = 'en'
+        self.swap_enabled = False
         self.tab_preview_func = {
             (0, 0): self.preview_general_replace,
             (0, 1): self.preview_general_casing,
@@ -82,26 +94,26 @@ class QtRename(MainWindow):
             'both_ops': False,
             'to_process': self.process_name
         }
-
         self.app_icon = QPixmap(":/qtrenamer/imgs/app_icon")
-        self.app_title = 'QtRename 1.0.0'
-        self.app_description = 'Advanced renamer with rich features'
+        self.app_title = 'QtRename 1.1.0'
+        self.app_description = self.tr(self.about_desc)
         self.app_link = 'https://github.com/amad3v/QtRename'
         self.stacked_index = 0
         self.regex_enabled = False
-        self.current_path = str(Path.home())
+        self.current_path = str(path_func.home())
         self.ext_filters = self.txt_filter_ext.text()
         self.filter_ext = '*.*'
         self.run_once = -1
-
         self.actions = {
-            'E&xit': qApp.quit,
-            '&About': self.show_about,
-            'About Qt': QApplication.instance().aboutQt,
-            '&Undo': self.undo_renaming,
-            '&Rename': self.rename_selection,
-            '&Errors Log': self.show_errors
+            'exit': qApp.quit,
+            'clear': self.clear_selection,
+            'about': self.show_about,
+            'about_qt': QApplication.instance().aboutQt,
+            'undo': self.undo_renaming,
+            'rename': self.rename_items,
+            'errors': self.show_errors
         }
+        self.fetcher_busy = False
 
         self.setup_models()
         self.setup_defaults()
@@ -109,12 +121,10 @@ class QtRename(MainWindow):
         self.list_content()
 
     def setup_defaults(self):
-        self.lst_loaded_files.setModel(self.fetcher.smi_model)
+        self.table_model.setHorizontalHeaderLabels((self.before, self.after, '', ''))
+        self.lst_loaded_files.setModel(self.table_model)
         self.txt_load_path.setCompleter(self.completer)
         self.txt_load_path.setText(self.current_path)
-
-    def setup_animation(self):
-        self.animation.setup_movie(animation_tones[self.theme_name[1]])
 
     def setup_models(self):
         self.fsm.setRootPath(root_dir[os_type])
@@ -127,20 +137,25 @@ class QtRename(MainWindow):
 
     def setup_slots(self):
         super().setup_slots()
+        self.data_source.reset_model.connect(self.empty_model)
+        self.data_source.update_row.connect(self.update_model)
+        self.data_source.update_item.connect(self.table_model.setItem)
+        self.done_clearing.connect(self.data_source.ready_to_load)
         self.timer.timeout.connect(self.animation.movie_start)
 
     def show_about(self):
-        About(self, self.app_icon, self.app_title, self.app_description, self.app_link).exec_()
+        About(self, self.app_icon, self.app_title, self.tr(self.about_desc),
+              self.app_link, self.about_warning, self.about_license).exec_()
 
-    def theme_selector(self, action):
-        new_theme=self.set_theme(*dict_slots[action.text()])
+    def theme_setter(self, action):
+        new_theme = self.set_theme(*dict_slots[action.data()])
         palette = new_theme[0]
         self.theme_name = new_theme[1]
         theme_wrapper(palette)
-        self.setup_animation()
+        self.animation.setup_animation(animation_tones[self.theme_name[1]][0], animation_tones[self.theme_name[1]][1])
 
-    def load_fetcher(self):
-        self.fetcher.setup_fetcher(
+    def load_data(self):
+        self.data_source.setup_data_source(
             self.current_path,
             self.filter_ext.split(','),
             self.filter_files,
@@ -150,18 +165,19 @@ class QtRename(MainWindow):
             self.process_name
         )
         self.start_animation()
-        self.start_thread(self.fetcher.start_collector, self.on_done_collecting)
+        self.start_worker(self.data_source.start_collector, self.on_done_collecting)
 
-    def start_thread(self, main_func, finish_func=None, args=None):
-        worker = Worker(main_func, args)
-        worker.signals.done.connect(finish_func)
-        self.thread_pool.start(worker)
+    def start_worker(self, main_func, finish_func=None, args=None):
+        ops_worker = Worker(main_func, args)
+        ops_worker.signals.done.connect(finish_func)
+        self.thread_pool.start(ops_worker)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self.lst_loaded_files.resizeEvent(event)
         self.animation.setGeometry(QRect(0, 0, event.size().width(), event.size().height()))
 
-    def select_preview_loader(self):
+    def current_options(self):
         if not self.stacked_index:
             self.tab_preview_func[(0, self.tab_general.currentIndex())]()
         else:
@@ -170,12 +186,12 @@ class QtRename(MainWindow):
     def undo_renaming(self):
         self.action_undo.setEnabled(False)
         self.start_animation()
-        self.start_thread(undo_rename, self.list_content)
+        self.start_worker(undo_rename, self.list_content)
 
-    def rename_selection(self):
+    def rename_items(self):
         self.action_undo.setEnabled(True)
         self.start_animation()
-        self.start_thread(self.fetcher.rename_files, self.list_content, (self.view_selection, rename_items))
+        self.start_worker(self.data_source.rename_files, self.list_content, (self.get_selected_rows, rename_items))
 
     def on_selection_changed(self, lst):
         self.view_selection = lst
@@ -185,9 +201,10 @@ class QtRename(MainWindow):
         if not self.animation_on:
             self.animation_on = True
             self.timer.start()
-            self.lbl_status.setText('Running...')
+            self.fetcher_busy = True
+            self.update_status()
 
-    def check_field(self):
+    def validate_filter(self):
         if self.filter_ext == self.txt_filter_ext.text(): return
         self.filter_ext = get_filter(self.txt_filter_ext.text())
 
@@ -198,24 +215,24 @@ class QtRename(MainWindow):
 
         self.list_content()
 
-    def set_process_name(self):
+    def set_processing_options(self):
         self.process_name = dict_process[(self.chk_process_name.isChecked(), self.chk_process_ext.isChecked())]
-        if self.txt_load_path.text(): self.select_preview_loader()
+        if self.txt_load_path.text(): self.current_options()
 
-    def set_files(self):
+    def set_include_files(self):
         self.filter_files = self.chk_file_in.isChecked()
-        if self.txt_load_path.text(): self.load_fetcher()
+        if self.txt_load_path.text(): self.load_data()
 
-    def set_dirs(self):
+    def set_include_dirs(self):
         self.filter_dirs = self.chk_dirs_in.isChecked()
-        if self.txt_load_path.text(): self.load_fetcher()
+        if self.txt_load_path.text(): self.load_data()
 
-    def set_sub_dirs(self):
+    def set_include_subdirs(self):
         self.flags = flags_dict[self.chk_subdirs_in.isChecked()]
-        if self.txt_load_path.text(): self.load_fetcher()
+        if self.txt_load_path.text(): self.load_data()
 
-    def process_trigger(self, menu_action):
-        menu_action_label = menu_action.text()
+    def menu_trigger(self, menu_action):
+        menu_action_label = str(menu_action.data())
         if menu_action_label in self.actions:
             self.actions[menu_action_label]()
 
@@ -230,7 +247,7 @@ class QtRename(MainWindow):
                 re.compile(to_find, is_case_sensitive[self.chk_sensetive.isChecked()])
             except re.error:
                 QMessageBox(QMessageBox.Warning,
-                            'Error', 'Invalid regular expression',
+                            self.tr(self.error), self.tr(self.invalid_regex),
                             QMessageBox.Ok, self).exec_()
 
                 self.txt_find.setFocus()
@@ -238,10 +255,10 @@ class QtRename(MainWindow):
                 return
 
         skip = 0 if self.swap_enabled or self.regex_enabled else self.spn_skip.value()
-        max_swap = 0 if  self.regex_enabled else self.spn_max_swap.value()
+        max_swap = 0 if self.regex_enabled else self.spn_max_swap.value()
 
         fun_args = (
-            self.view_selection,
+            self.get_selected_rows,
             get_preview_replace,
             self.process_name,
             to_find,
@@ -253,7 +270,27 @@ class QtRename(MainWindow):
             self.regex_enabled
         )
 
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, fun_args)
+        self.start_worker(self.data_source.load_preview, self.stop_animation, fun_args)
+
+    def preview_general_casing(self):
+        self.start_animation()
+
+        if self.chk_ignore_upper.isChecked():
+            keep_option = 'upper'
+        elif self.chk_ignore_mixed.isChecked():
+            keep_option = 'mixed'
+        else:
+            keep_option = ''
+
+        fun_args = (
+            self.get_selected_rows,
+            get_preview_casing,
+            self.file_case,
+            self.ext_case,
+            keep_option
+        )
+
+        self.start_worker(self.data_source.load_preview, self.stop_animation, fun_args)
 
     def preview_general_addrem(self):
         self.start_animation()
@@ -262,15 +299,14 @@ class QtRename(MainWindow):
         self.addrem_chars()
         self.addrem_func_args['to_process'] = self.process_name
 
-        fun_args = (self.view_selection, add_remove_chars, self.addrem_func_args)
-
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, fun_args)
+        fun_args = (self.get_selected_rows, add_remove_chars, self.addrem_func_args)
+        self.start_worker(self.data_source.load_preview, self.stop_animation, fun_args)
 
     def preview_general_move(self):
         self.start_animation()
 
         fun_args = (
-            self.view_selection,
+            self.get_selected_rows,
             get_preview_move,
             self.process_name,
             int(self.spn_move_from.value()),
@@ -281,13 +317,13 @@ class QtRename(MainWindow):
             self.chk_relative.isChecked()
         )
 
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, fun_args)
+        self.start_worker(self.data_source.load_preview, self.stop_animation, fun_args)
 
     def preview_general_spaces(self):
         self.start_animation()
 
         fun_args = (
-            self.view_selection,
+            self.get_selected_rows,
             get_preview_spaces,
             self.process_name,
             self.chk_leading.isChecked(),
@@ -303,12 +339,12 @@ class QtRename(MainWindow):
             self.txt_one_char.text()
         )
 
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, fun_args)
+        self.start_worker(self.data_source.load_preview, self.stop_animation, fun_args)
 
     def preview_numbers_counter(self):
         self.start_animation()
         func_args = (
-            self.view_selection,
+            self.get_selected_rows,
             get_preview_counter,
             self.process_name,
             self.cmb_counter.currentIndex(),
@@ -317,7 +353,7 @@ class QtRename(MainWindow):
             self.txt_replace_name.text()
         )
 
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, func_args)
+        self.start_worker(self.data_source.load_preview, self.stop_animation, func_args)
 
     def preview_numbers_renumber(self):
         self.start_animation()
@@ -325,17 +361,17 @@ class QtRename(MainWindow):
         qtrename.counters.p_enumerate = int(self.spn_start_enum.value())
 
         func_args = (
-            self.view_selection,
+            self.get_selected_rows,
             get_preview_renumber,
             self.process_name,
             int(self.spn_start_enum.value()),
             int(self.spn_step.value()),
             self.txt_sep_enum.text(),
             self.chk_padding.isChecked(),
-            self.fetcher.smi_model.rowCount()
+            self.table_model.rowCount()
         )
 
-        self.start_thread(self.fetcher.load_preview, self.on_num_renumber_finished, func_args)
+        self.start_worker(self.data_source.load_preview, self.on_num_renumber_finished, func_args)
 
     def check_options(self):
         if not self.chk_regex.isChecked():
@@ -449,24 +485,24 @@ class QtRename(MainWindow):
     def addrem_chars(self):
         self.addrem_func_args['both_ops'] = self.chk_add_remove.isChecked()
 
-    def on_maintain_before_checked(self):
+    def on_maintain_before(self):
         self.txt_maintain_before.setEnabled(self.chk_maintain_before.isChecked())
         self.animation_on = True
         self.preview_general_spaces()
 
-    def on_maintain_after_checked(self):
+    def on_maintain_after(self):
         self.txt_maintain_after.setEnabled(self.chk_maintain_after.isChecked())
         self.animation_on = True
         self.preview_general_spaces()
 
-    def on_x_chars_toggled(self):
+    def on_chars_toggled(self):
         self.txt_x_chars.setEnabled(self.rdb_x_chars.isChecked())
         if not self.txt_x_chars.isEnabled():
             self.txt_x_chars.setText('')
         self.animation_on = True
         self.preview_general_spaces()
 
-    def on_one_char_toggled(self):
+    def on_char_toggled(self):
         self.txt_one_char.setEnabled(self.rdb_one_char.isChecked())
         if not self.txt_one_char.isEnabled():
             self.txt_one_char.setText('')
@@ -478,8 +514,10 @@ class QtRename(MainWindow):
         self.preview_numbers_counter()
 
     def on_rename_clicked(self):
-        self.rename_selection()
+        self.rename_items()
+        self.view_selection = []
         self.list_content()
+        self.lst_loaded_files.setFocus()
 
     def on_tab_gen_changed(self, index):
         self.chk_process_name.setEnabled(not index)
@@ -494,10 +532,10 @@ class QtRename(MainWindow):
 
     def open_dir(self, model_index):
         try:
-            row_data = Path(model_index.siblingAtColumn(2).data()).joinpath(model_index.data())
+            row_data = path_func(model_index.siblingAtColumn(2).data()).joinpath(model_index.data())
             full_path = str(row_data)
 
-            if Path(full_path).is_dir():
+            if path_func(full_path).is_dir():
                 self.txt_load_path.setText(full_path)
                 self.list_content()
         except:
@@ -505,9 +543,9 @@ class QtRename(MainWindow):
 
     def level_up(self):
         current_path = self.txt_load_path.text()
-        if current_path == Path(current_path).root:
+        if current_path == path_func(current_path).root:
             return
-        self.txt_load_path.setText(str(Path(current_path).parent))
+        self.txt_load_path.setText(str(path_func(current_path).parent))
         self.list_content()
 
     def next_stacked_page(self):
@@ -537,15 +575,16 @@ class QtRename(MainWindow):
         self.tab_preview_func[self.current_tab]()
 
     def get_dir(self):
-        directory = QFileDialog.getExistingDirectory(caption="Choose directory", directory=self.current_path)
+        directory = QFileDialog.getExistingDirectory(caption=self.tr(self.ch_dir), directory=self.current_path)
 
         if not validate_path(directory):
-            QMessageBox(QMessageBox.Warning, 'Error', 'Invalid directory', QMessageBox.Ok, self).exec_()
+            QMessageBox(QMessageBox.Warning, self.tr(self.error), self.tr(self.invalid_dir), QMessageBox.Ok,
+                        self).exec_()
             return
 
-        self.current_path = directory
-        self.txt_load_path.setText(directory)
-        self.load_fetcher()
+        self.current_path = str(path_func(directory))
+        self.txt_load_path.setText(self.current_path)
+        self.load_data()
 
     def list_content(self):
         self.view_selection = []
@@ -555,7 +594,14 @@ class QtRename(MainWindow):
         self.current_path = directory
         self.txt_load_path.setText(directory)
         self.fsm.setRootPath(directory)
-        self.load_fetcher()
+        self.load_data()
+
+    def init_lang(self):
+        lang = self.app_lang
+        self.load_language(lang)
+        for i in self.lang_menu.actions():
+            if i.data() == lang:
+                i.setChecked(True)
 
     def init_theme(self):
         theme, tone = self.theme_name
@@ -565,33 +611,29 @@ class QtRename(MainWindow):
         self.theme_name = current_theme[1]
         return current_theme[0]
 
-    @pyqtSlot()
-    def stop_animation(self):
-        self.timer.stop()
-        self.animation_on = False
-        self.animation.movie_stop()
-        self.lbl_status.setText(f'{self.fetcher.smi_model.rowCount()} items.')
-
-    @pyqtSlot()
-    def preview_general_casing(self):
-        self.start_animation()
-
-        if self.chk_ignore_upper.isChecked():
-            keep_option = 'upper'
-        elif self.chk_ignore_mixed.isChecked():
-            keep_option = 'mixed'
+    def update_status(self):
+        self.table_model.setHorizontalHeaderLabels((self.before, self.after, '', ''))
+        if self.fetcher_busy:
+            self.lbl_status.setText(self.running)
         else:
-            keep_option = ''
+            self.lbl_status.setText(f'{self.table_model.rowCount()} {self.lbl_items}')
 
-        fun_args = (
-            self.view_selection,
-            get_preview_casing,
-            self.file_case,
-            self.ext_case,
-            keep_option
-        )
+    def changeEvent(self, event):
+        if event.type() == QEvent.LanguageChange:
+            self.retranslate_ui()
+            self.lst_loaded_files.retranslate_ui()
+            self.update_status()
+        super().changeEvent(event)
 
-        self.start_thread(self.fetcher.load_preview, self.stop_animation, fun_args)
+    def load_language(self, language):
+        if self.curr_lang != language:
+            self.curr_lang = language
+            switch_translator(translator, language)
+            self.app_lang = language
+
+    def on_lang_changed(self, action: QAction):
+        if action:
+            self.load_language(action.data())
 
     def enable_swap(self, state):
         if self.regex_enabled:
@@ -615,6 +657,14 @@ class QtRename(MainWindow):
         self.preview_general_replace()
 
     @pyqtSlot()
+    def stop_animation(self):
+        self.timer.stop()
+        self.animation_on = False
+        self.animation.movie_stop()
+        self.fetcher_busy = False
+        self.update_status()
+
+    @pyqtSlot()
     def on_num_renumber_finished(self):
         self.stop_animation()
         qtrename.counters.p_enumerate = int(self.spn_start_enum.value())
@@ -622,21 +672,58 @@ class QtRename(MainWindow):
     @pyqtSlot()
     def on_done_collecting(self):
         self.stop_animation()
+        self.lst_loaded_files.setModel(self.table_model)
         self.lst_loaded_files.hide_columns(2, 5)
-
         self.tab_preview_func[self.current_tab]()
-        self.lbl_status.setText(f'{self.fetcher.smi_model.rowCount()} items.')
+        self.fetcher_busy = False
+        self.update_status()
+
+    @pyqtSlot(list)
+    def update_model(self, rows):
+        for row in rows:
+            self.table_model.appendRow(row)
+
+    @pyqtSlot()
+    def empty_model(self):
+        self.table_model.clear()
+        while self.table_model.rowCount():
+            pass
+        self.table_model.setHorizontalHeaderLabels((self.before, self.after, '', ''))
+        self.done_clearing.emit(True)
+
+    @pyqtSlot()
+    def clear_selection(self):
+        self.lst_loaded_files.clearSelection()
+        self.tab_preview_func[self.current_tab]()
 
     @property
     def theme_name(self):
-        return self.theme.get_theme
+        return self.settings.get_theme
 
     @theme_name.setter
     def theme_name(self, theme):
-        self.theme.save_theme(theme[0], theme[1])
+        self.settings.save_theme(theme[0], theme[1])
+
+    @property
+    def app_lang(self):
+        return self.settings.get_language
+
+    @app_lang.setter
+    def app_lang(self, lang):
+        self.settings.save_lang(lang)
+
+    @property
+    def get_selected_rows(self):
+        if not self.view_selection:
+            return ()
+        else:
+            return self.view_selection[0].row(), self.view_selection[-1].row() + 1
 
 
-app = QApplication(sys.argv)
+def switch_translator(translator, filename):
+    app.removeTranslator(translator)
+    if translator.load(f":/qtrenamer/i18n/{filename}"):
+        app.installTranslator(translator)
 
 
 def theme_wrapper(palette):
@@ -657,11 +744,12 @@ def main():
     app.setStyle('Fusion')
     qInstallMessageHandler(qt_message_handler)
     window = QtRename()
+    window.init_lang()
     app.setPalette(window.init_theme())
     window.show()
 
     sys.exit(app.exec_())
-    
+
+
 if __name__ == '__main__':
     main()
-    
