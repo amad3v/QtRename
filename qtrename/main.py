@@ -30,7 +30,6 @@ from qtrename.TableView import DataSource
 from qtrename.Theme import Settings
 from qtrename.add_remove import add_remove_chars
 from qtrename.common import *
-from qtrename.fetcher import *
 from qtrename.mainwindow import MainWindow
 from qtrename.preview import *
 from qtrename.worker import Worker
