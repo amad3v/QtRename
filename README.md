@@ -4,6 +4,8 @@
 # QtRename
 ![QtRename Logo](https://github.com/amad3v/QtRename/raw/master/qtrename/app.png)
 
+[![Downloads](https://pepy.tech/badge/qtrename)](https://pepy.tech/project/qtrename) ![GitHub](https://img.shields.io/github/license/amad3v/QtRename) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/amad3v/Qtrename?color=%23228B22)
+
 feature-rich app to rename files for GNU/Linux and Windows
 
 - [Installation](#installation)
