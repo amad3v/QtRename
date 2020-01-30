@@ -17,8 +17,10 @@
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
 ############################################################################
- 
+
 import re
+
+from qtrename.common import rectified_pattern, escape_metachars
 
 
 def set_list(text):
@@ -29,11 +31,6 @@ def set_list(text):
     return list(set(lst))
 
 
-def validate_pattern(pattern):
-    lst = r'.^$*+?{}[]|()\\'
-    return fr'\{pattern}' if pattern in lst else pattern
-
-
 def maintain_space(text, is_before, before, is_after, after):
     before_list = set_list(before)
     after_list = set_list(after)
@@ -41,12 +38,12 @@ def maintain_space(text, is_before, before, is_after, after):
 
     if is_before:
         for c in before_list:
-            p = re.compile(fr"(?<! ){validate_pattern(c)}")
+            p = re.compile(fr"(?<! ){escape_metachars(c)}")
             tmp = p.sub(fr' {c}', tmp)
 
     if is_after:
         for c in after_list:
-            p = re.compile(fr"{validate_pattern(c)}(?! )")
+            p = re.compile(fr"{escape_metachars(c)}(?! )")
             tmp = p.sub(fr'{c} ', tmp)
 
     return tmp
@@ -55,14 +52,17 @@ def maintain_space(text, is_before, before, is_after, after):
 def replace_chars(text, pattern, is_with_space):
     if not pattern: return ''
 
+    rectified = rectified_pattern(pattern)
+
     try:
-        re.compile(fr'{pattern}')
+        re.compile(fr'{rectified}')
     except:
         return ''
-    return re.sub(rf"{pattern}+", ' ', text) if is_with_space else text.replace(pattern, ' ')
+    return re.sub(rf"{rectified}+", ' ', text) if is_with_space else text.replace(pattern, ' ')
 
 
-def g_replace_spaces(text, leading, trailing, many_one, is_before, before, is_after, after, is_x_chars, is_one_char, x_chars, one_char):
+def g_replace_spaces(text, leading, trailing, many_one, is_before, before, is_after, after, is_x_chars, is_one_char,
+                     x_chars, one_char):
     tmp = text
     if is_x_chars: tmp = replace_chars(tmp, x_chars, False)
     if is_one_char: tmp = replace_chars(tmp, one_char, True)

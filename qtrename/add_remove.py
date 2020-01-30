@@ -17,7 +17,7 @@
 ##   along with this program.  If not, see <https://www.gnu.org/licenses/>. ##
 ##############################################################################
 ############################################################################
-
+from qtrename.common import has_dot
 from qtrename.preview import get_name_part, set_name_part
 
 
@@ -99,10 +99,9 @@ def insert_backwards(text, index, to_insert, is_overwrite):
     return tmp
 
 
-def add_remove_chars(text, fargs):
+def add_remove_chars(text, fargs, is_dir):
     args = fargs[0]
-    has_dot = '.' in text
-    tmp = get_name_part(text, args['to_process'], has_dot)
+    tmp = get_name_part(text, args['to_process'], has_dot(text, is_dir))
 
     if not tmp: return ''
 
@@ -116,7 +115,7 @@ def add_remove_chars(text, fargs):
         tmp = insert_chars_global(tmp, args['add_num'], args['insert'],
                                   args['backw_add'], args['overwrite'])
 
-    tmp = set_name_part(tmp, text, args['to_process'], has_dot)
+    tmp = set_name_part(tmp, text, args['to_process'], has_dot(text, is_dir))
 
     if tmp == text: return ''
 

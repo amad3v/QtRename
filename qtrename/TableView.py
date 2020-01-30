@@ -21,8 +21,7 @@
 import os
 import subprocess
 
-from PyQt5.QtCore import (Qt, pyqtSlot, QPoint, pyqtSignal, QVariant, QFileInfo,
-                          QSize, QDirIterator, QDir, QObject, QCoreApplication)
+from PyQt5.QtCore import Qt, pyqtSlot, QPoint, pyqtSignal, QVariant, QSize, QDirIterator, QDir, QObject, QCoreApplication
 from PyQt5.QtGui import QIcon, QStandardItem
 from PyQt5.QtWidgets import QTableView, QAction, QMenu, QAbstractItemView, QFileIconProvider, QHeaderView
 
@@ -53,8 +52,8 @@ class TableView(QTableView):
         self.__c_menu.addAction(self.__show_action)
         self.__c_menu.addSeparator()
         self.__c_menu.addAction(self.__open_action)
-        self.__path=None
-        self.__item=None
+        self.__path = None
+        self.__item = None
 
         self.__show_action.triggered.connect(self.open_in_explorer)
         self.__open_action.triggered.connect(self.open_as_file)
@@ -176,7 +175,7 @@ class DataSource(QObject):
                 process_item = False
 
             data = [QStandardItem(self.__get_icon(file_info), next_element),
-                    QStandardItem(get_preview_replace(next_element, self.__func_args)),
+                    QStandardItem(get_preview_replace(next_element, self.__func_args, file_info.isDir())),
                     QStandardItem(str(item.parent)),
                     QStandardItem(str(process_item))]
 
@@ -214,8 +213,9 @@ class DataSource(QObject):
 
         if not selection:
             for i, row in enumerate(self.data_contents):
+                is_dir = path_func(row[2].data(Qt.DisplayRole)).joinpath(row[0].data(Qt.DisplayRole)).is_dir()
                 if row[3].data(Qt.DisplayRole) == 'True':
-                    new_name = QStandardItem(func(row[0].data(Qt.DisplayRole), func_args[2:]))
+                    new_name = QStandardItem(func(row[0].data(Qt.DisplayRole), func_args[2:], is_dir))
                     self.data_contents[i][1] = new_name
                     self.update_item.emit(i, 1, new_name)
             return
@@ -223,7 +223,8 @@ class DataSource(QObject):
         for i, row in enumerate(self.data_contents):
             if i in range(selection[0], selection[1]):
                 if row[3].data(Qt.DisplayRole) == 'True':
-                    new_name = QStandardItem(func(row[0].data(Qt.DisplayRole), func_args[2:]))
+                    is_dir = path_func(row[2].data(Qt.DisplayRole)).joinpath(row[0].data(Qt.DisplayRole)).is_dir()
+                    new_name = QStandardItem(func(row[0].data(Qt.DisplayRole), func_args[2:], is_dir))
                     self.data_contents[i][1] = new_name
                     self.update_item.emit(i, 1, new_name)
             else:

@@ -21,7 +21,7 @@
 import re
 from enum import IntFlag
 
-from qtrename.common import os_type
+from qtrename.common import os_type, rectified_pattern
 
 
 class CaseSensitivity(IntFlag):
@@ -31,7 +31,7 @@ class CaseSensitivity(IntFlag):
 
 def find_occurrences(text, to_find, skip, max_rpl, c_sensitive):
     lst = []
-    tmp_find = escape_metachars(to_find)
+    tmp_find = rectified_pattern(to_find)
 
     try:
         pattern = re.compile(tmp_find, c_sensitive)
@@ -62,18 +62,6 @@ def insensitive_replace(text, replace_with, positions):
         tmp += replace_with + text[item[1]:positions[i + 1][0]]
 
     tmp += replace_with + text[positions[-1][1]:]
-
-    return tmp
-
-
-def escape_metachars(text):
-    metachars = '.^$*+?{}[]\\|()'
-    tmp = ''
-    for c in text:
-        if c in metachars:
-            tmp += '\\' + c
-        else:
-            tmp += c
 
     return tmp
 
@@ -129,7 +117,7 @@ def find_replace(text, to_find, replace_with, skip, max_rpl, c_sensitive):
     tmp = ''
 
     if not to_find or validate_replacement(replace_with):
-        return tmp
+        return ''
 
     positions = find_occurrences(text, to_find, skip, max_rpl, c_sensitive)
     if not positions:
@@ -138,7 +126,7 @@ def find_replace(text, to_find, replace_with, skip, max_rpl, c_sensitive):
     first_occ = positions[0][0]
 
     if c_sensitive == re.IGNORECASE:
-        tmp = replace_regex(text, to_find, replace_with, skip, max_rpl, c_sensitive)
+        tmp = replace_regex(text, to_find, replace_with, skip, max_rpl, c_sensitive, False)
     else:
         if not max_rpl:
             tmp = text[first_occ:].replace(to_find, replace_with)
@@ -147,9 +135,7 @@ def find_replace(text, to_find, replace_with, skip, max_rpl, c_sensitive):
             tmp = text[first_occ:].replace(to_find, replace_with, max_rpl)
             tmp = text[:first_occ] + tmp
 
-    if tmp == text: return ''
-
-    return tmp
+    return '' if tmp == text else tmp
 
 
 def swap_strings(text, to_find, swap_with, skip, max_rpl, c_sensitive):
@@ -196,8 +182,15 @@ def swap_strings(text, to_find, swap_with, skip, max_rpl, c_sensitive):
     return ''.join(lst_find)
 
 
-def replace_regex(subject, to_replace, replace_with, skip, max_occ, case_sensitive):
-    pattern = re.compile(to_replace, case_sensitive)
+def replace_regex(subject, to_replace, replace_with, skip, max_occ, case_sensitive, is_regex):
+    if not to_replace:
+        return ''
+
+    rectified = to_replace
+    if not is_regex:
+        rectified = rectified_pattern(to_replace)
+
+    pattern = re.compile(rectified, case_sensitive)
     matches = pattern.finditer(subject)
     result = ''
 
@@ -207,9 +200,7 @@ def replace_regex(subject, to_replace, replace_with, skip, max_occ, case_sensiti
                 result = subject[:match.start()] + pattern.sub(replace_with, subject[match.start():], max_occ)
                 break
     else:
-
-        if pattern.search(subject):
-            result = pattern.sub(replace_with, subject, max_occ)
+        result = pattern.sub(replace_with, subject, max_occ)
 
     if result == subject:
         return ''
@@ -219,5 +210,5 @@ def replace_regex(subject, to_replace, replace_with, skip, max_occ, case_sensiti
 
 def g_replace_general(text, to_find, replace_swap, skip, max_rpl, is_swap, c_sensitive, is_regex):
     if is_swap: return swap_strings(text, to_find, replace_swap, skip, max_rpl, c_sensitive)
-    if is_regex: return replace_regex(text, to_find, replace_swap, skip, max_rpl, c_sensitive)
+    if is_regex: return replace_regex(text, to_find, replace_swap, skip, max_rpl, c_sensitive, True)
     return find_replace(text, to_find, replace_swap, skip, max_rpl, c_sensitive)

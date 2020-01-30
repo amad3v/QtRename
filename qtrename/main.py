@@ -20,10 +20,14 @@
 
 import sys
 
-from PyQt5.QtCore import (qInstallMessageHandler, QtFatalMsg, QtCriticalMsg, QRect, QThreadPool,
-                          pyqtSlot, QTranslator, QEvent, QCoreApplication, pyqtSignal)
+from PyQt5.QtCore import (
+    QtFatalMsg, QtCriticalMsg, QRect, QThreadPool, pyqtSlot,
+    QTranslator, QEvent, QCoreApplication, pyqtSignal, Qt, QDir, qInstallMessageHandler
+)
+from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QCompleter, QFileSystemModel, qApp, QFileDialog, QMessageBox, QApplication, QAction)
 
+from qtrename import counters
 from qtrename.About import About
 from qtrename.Animation import Animation
 from qtrename.TableView import DataSource
@@ -71,6 +75,7 @@ class QtRename(MainWindow):
             (1, 0): self.preview_numbers_counter,
             (1, 1): self.preview_numbers_renumber
         }
+        self.is_case_sensitive = {True: 0, False: re.I}
         self.view_selection = []
         self.process_name = ProcessName.FILENAME
         self.flags = QDirIterator.NoIteratorFlags
@@ -94,7 +99,7 @@ class QtRename(MainWindow):
             'to_process': self.process_name
         }
         self.app_icon = QPixmap(":/qtrenamer/imgs/app_icon")
-        self.app_title = 'QtRename 1.1.0'
+        self.app_title = 'QtRename 1.1.1'
         self.app_description = self.tr(self.about_desc)
         self.app_link = 'https://github.com/amad3v/QtRename'
         self.stacked_index = 0
@@ -235,26 +240,23 @@ class QtRename(MainWindow):
         if menu_action_label in self.actions:
             self.actions[menu_action_label]()
 
+    def check_regex(self, to_find):
+        if self.regex_enabled:
+            try:
+                re.compile(to_find, self.is_case_sensitive[self.chk_sensetive.isChecked()])
+            except re.error:
+                return False
+
+        return True
+
     def preview_general_replace(self):
         self.start_animation()
         to_find = self.txt_find.text()
 
-        is_case_sensitive = {True: 0, False: re.I}
-
-        if self.regex_enabled:
-            try:
-                re.compile(to_find, is_case_sensitive[self.chk_sensetive.isChecked()])
-            except re.error:
-                QMessageBox(QMessageBox.Warning,
-                            self.tr(self.error), self.tr(self.invalid_regex),
-                            QMessageBox.Ok, self).exec_()
-
-                self.txt_find.setFocus()
-                self.txt_find.selectAll()
-                return
+        if not self.check_regex(to_find):
+            to_find = ''
 
         skip = 0 if self.swap_enabled or self.regex_enabled else self.spn_skip.value()
-        max_swap = 0 if self.regex_enabled else self.spn_max_swap.value()
 
         fun_args = (
             self.get_selected_rows,
@@ -263,9 +265,9 @@ class QtRename(MainWindow):
             to_find,
             self.txt_replace.text(),
             skip,
-            max_swap,
+            self.spn_max_swap.value(),
             self.chk_swap.isChecked(),
-            is_case_sensitive[self.chk_sensetive.isChecked()],
+            self.is_case_sensitive[self.chk_sensetive.isChecked()],
             self.regex_enabled
         )
 
@@ -357,7 +359,7 @@ class QtRename(MainWindow):
     def preview_numbers_renumber(self):
         self.start_animation()
 
-        qtrename.counters.p_enumerate = int(self.spn_start_enum.value())
+        counters.p_enumerate = int(self.spn_start_enum.value())
 
         func_args = (
             self.get_selected_rows,
@@ -371,11 +373,6 @@ class QtRename(MainWindow):
         )
 
         self.start_worker(self.data_source.load_preview, self.on_num_renumber_finished, func_args)
-
-    def check_options(self):
-        if not self.chk_regex.isChecked():
-            self.animation_on = True
-            self.preview_general_replace()
 
     def set_case_status(self):
         if not self.chk_ignore_mixed.isChecked() and not self.chk_ignore_upper.isChecked():
@@ -513,19 +510,29 @@ class QtRename(MainWindow):
         self.preview_numbers_counter()
 
     def on_rename_clicked(self):
+        if not self.check_regex(self.txt_find.text()):
+            QMessageBox(QMessageBox.Warning,
+                        self.tr(self.error), self.tr(self.invalid_regex),
+                        QMessageBox.Ok, self).exec_()
+
+            self.txt_find.setFocus()
+            self.txt_find.selectAll()
+            return
+
         self.rename_items()
         self.view_selection = []
-        self.list_content()
         self.lst_loaded_files.setFocus()
 
     def on_tab_gen_changed(self, index):
-        self.chk_process_name.setEnabled(not index)
-        self.chk_process_ext.setEnabled(not index)
+        self.chk_process_name.setEnabled(not (index == 1))
+        self.chk_process_ext.setEnabled(not (index == 1))
 
         self.current_tab = (0, index)
         self.tab_preview_func[self.current_tab]()
 
     def on_tab_nums_changed(self, index):
+        self.chk_process_name.setEnabled(True)
+        self.chk_process_ext.setEnabled(True)
         self.current_tab = (1, index)
         self.tab_preview_func[self.current_tab]()
 
@@ -644,9 +651,9 @@ class QtRename(MainWindow):
 
     def enable_regex(self, state):
         self.chk_swap.setEnabled(not state)
-        self.spn_max_swap.setEnabled(not state)
+        # self.spn_max_swap.setEnabled(not state)
         self.lbl_skip.setEnabled(not state)
-        self.lbl_max.setEnabled(not state)
+        # self.lbl_max.setEnabled(not state)
         if self.chk_swap.isChecked():
             self.spn_skip.setEnabled(False)
         else:
@@ -666,7 +673,7 @@ class QtRename(MainWindow):
     @pyqtSlot()
     def on_num_renumber_finished(self):
         self.stop_animation()
-        qtrename.counters.p_enumerate = int(self.spn_start_enum.value())
+        counters.p_enumerate = int(self.spn_start_enum.value())
 
     @pyqtSlot()
     def on_done_collecting(self):

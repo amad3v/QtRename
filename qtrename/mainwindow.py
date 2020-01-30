@@ -19,13 +19,12 @@
 ##############################################################################
 
 from PyQt5.QtCore import QMetaObject, QSize, QMargins, QTimer, pyqtSlot, Qt, QModelIndex, QCoreApplication
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QSizePolicy, QStackedWidget, QTabWidget, QFrame, QGroupBox,
-                             QSpinBox, QLabel, QLineEdit, QCheckBox, QRadioButton, QComboBox, QGridLayout,
-                             QPushButton, QMenuBar, QMenu, QStatusBar, QAction, QVBoxLayout, QSpacerItem,
-                             QApplication, QActionGroup, QDesktopWidget, QScrollArea)
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QSizePolicy, QStackedWidget, QTabWidget, QFrame, QGroupBox, QSpinBox,
+    QLabel, QLineEdit, QCheckBox, QRadioButton, QComboBox, QGridLayout, QPushButton, QMenuBar,
+    QMenu, QStatusBar, QAction, QVBoxLayout, QSpacerItem, QApplication, QActionGroup, QDesktopWidget, QScrollArea
+)
 
-import qtrename.counters
-import qtrename.qtrenamer_rc
 from qtrename.Errors import Errors
 from qtrename.TableView import TableView
 from qtrename.common import *
@@ -254,8 +253,7 @@ class MainWindow(QMainWindow):
         self.chk_ignore_mixed.stateChanged.connect(self.switch_mixed)
         self.chk_ignore_upper.stateChanged.connect(self.switch_upper)
         self.txt_replace.textChanged.connect(self.preview_general_replace)
-        self.txt_find.textChanged.connect(self.check_options)
-        self.txt_find.editingFinished.connect(self.preview_general_replace)
+        self.txt_find.textChanged.connect(self.preview_general_replace)
         self.chk_swap.stateChanged.connect(self.enable_swap)
         self.chk_sensetive.stateChanged.connect(self.preview_general_replace)
         self.spn_max_swap.valueChanged.connect(self.preview_general_replace)
@@ -1100,10 +1098,6 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot()
     def preview_general_replace(self):
-        pass
-
-    @pyqtSlot()
-    def check_options(self):
         pass
 
     @pyqtSlot(int)

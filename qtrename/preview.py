@@ -19,14 +19,17 @@
 ############################################################################
 
 from qtrename.casing import set_case, apply_case
-from qtrename.common import ProcessName, path_func
-from qtrename.move import g_move_general
+from qtrename.common import ProcessName, path_func, has_dot
 from qtrename.counters import g_preview_counter, g_preview_renumber
+from qtrename.move import g_move_general
 from qtrename.replace import g_replace_general
 from qtrename.spaces import g_replace_spaces
 
 
 def get_name_part(text, flag, has_dot):
+    if not has_dot:
+        return text
+
     if flag == ProcessName.FILENAME:
         return str(path_func(text).stem)
 
@@ -40,6 +43,9 @@ def get_name_part(text, flag, has_dot):
 
 
 def set_name_part(mod_text, text, flag, has_dot):
+    if not has_dot:
+        return mod_text
+
     if not mod_text: return ''
 
     if flag == ProcessName.FILENAME:
@@ -52,21 +58,11 @@ def set_name_part(mod_text, text, flag, has_dot):
         return mod_text
 
 
-def get_preview_replace(element, func_args):
-    if func_args:
-        file_name = func_args[0]
-        if file_name == ProcessName.NONE: return ''
-
-        has_dot = '.' in element
-        tmp = get_name_part(element, file_name, has_dot)
-        output = g_replace_general(tmp, *func_args[1:])
-
-        return set_name_part(output, element, file_name, has_dot)
-
-    return ''
+def get_preview_replace(element, func_args, is_dir):
+    return base_preview(element, g_replace_general, func_args, is_dir) if func_args else ''
 
 
-def get_preview_casing(element, func_args):
+def get_preview_casing(element, func_args, is_dir):
     file_case = func_args[0]
     ext_case = func_args[1]
     keep = func_args[2]
@@ -83,45 +79,33 @@ def get_preview_casing(element, func_args):
     return '' if full_name == element else str(full_name)
 
 
-def get_preview_move(element, func_args):
+def get_preview_move(element, func_args, is_dir):
+    return base_preview(element, g_move_general, func_args, is_dir)
+
+
+def get_preview_spaces(element, func_args, is_dir):
+    return base_preview(element, g_replace_spaces, func_args, is_dir)
+
+
+def get_preview_counter(element, func_args, is_dir):
+    return base_preview(element, g_preview_counter, func_args, is_dir)
+
+
+def get_preview_renumber(element, func_args, is_dir):
+    return base_preview(element, g_preview_renumber, func_args, is_dir)
+
+
+def base_preview(element, func, func_args, is_dir):
     file_name = func_args[0]
     if file_name == ProcessName.NONE: return ''
 
-    has_dot = '.' in element
-    tmp = get_name_part(element, file_name, has_dot)
-    output = g_move_general(tmp, *func_args[1:])
+    tmp = get_name_part(element, file_name, has_dot(element, is_dir))
+    output = func(tmp, *func_args[1:])
 
-    return set_name_part(output, element, file_name, has_dot)
+    if not output:
+        return ''
 
-
-def get_preview_spaces(element, func_args):
-    file_name = func_args[0]
-    if file_name == ProcessName.NONE: return ''
-
-    has_dot = '.' in element
-    tmp = get_name_part(element, file_name, has_dot)
-    output = g_replace_spaces(tmp, *func_args[1:])
-
-    return set_name_part(output, element, file_name, has_dot)
+    return set_name_part(output, element, file_name, has_dot(element, is_dir))
 
 
-def get_preview_counter(element, func_args):
-    file_name = func_args[0]
-    if file_name == ProcessName.NONE: return ''
 
-    has_dot = '.' in element
-    tmp = get_name_part(element, file_name, has_dot)
-    output = g_preview_counter(tmp, *func_args[1:])
-    
-    return set_name_part(output, element, file_name, has_dot)
-
-
-def get_preview_renumber(element, func_args):
-    file_name = func_args[0]
-    if file_name == ProcessName.NONE: return ''
-
-    has_dot = '.' in element
-    tmp = get_name_part(element, file_name, has_dot)
-    output = g_preview_renumber(tmp, *func_args[1:])
-
-    return set_name_part(output, element, file_name, has_dot)

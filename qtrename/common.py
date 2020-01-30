@@ -28,7 +28,7 @@ from PyQt5.QtCore import QDirIterator
 from PyQt5.QtGui import QFont, QPalette, QPixmap, QIcon, QColor
 
 os_type = platform.system()
-path_style = {'Windows': WindowsPath, 'Linux': PosixPath,'Darwin': PosixPath}
+path_style = {'Windows': WindowsPath, 'Linux': PosixPath, 'Darwin': PosixPath}
 path_func = path_style[os_type]
 
 PRIMARY_DARK = QColor(53, 53, 53)
@@ -61,7 +61,6 @@ dict_tones = {
     'default': (None, None, 0, 'default')
 }
 
-
 dict_slots = {
     dict_tones['orange'][3]: ('dark', 'orange'),
     dict_tones['green'][3]: ('dark', 'green'),
@@ -70,14 +69,12 @@ dict_slots = {
     dict_tones['default'][3]: ('default', 'default')
 }
 
-
 errors_map = {
     'exists': [],
     'perms': [],
     'not_found': [],
     'other': []
 }
-
 
 labels2errors = (
     ('all', 'All'),
@@ -94,6 +91,7 @@ root_dir = {
 }
 
 list_old_names = []
+specials = r'.^$*+?{}[]|()\\'
 
 
 class ProcessName(Enum):
@@ -210,3 +208,19 @@ def validate_path(directory):
     if not directory: return False
     if path_func(directory).is_dir(): return True
     return False
+
+
+def has_dot(element, is_dir):
+    return '.' in element and not is_dir
+
+
+def escape_metachars(character):
+    return fr'\{character}' if character in specials else character
+
+
+def rectified_pattern(pattern):
+    tmp = ''
+    for character in pattern:
+        tmp += escape_metachars(character)
+
+    return tmp
