@@ -33,7 +33,7 @@ Head to your apps menu, type qtfind or you can find it under Accessories.
 
 ### Windows:
 
-- Download the installer from [here](https://github.com/amad3v/QtRename/releases/download/v1.1.0/QtRename.1.1.0.exe) [Require [Microsoft Visual C++ 2015 Redistributable](https://www.microsoft.com/en-gb/download/details.aspx?id=48145)]
+- Download the installer from [here](https://github.com/amad3v/QtRename/releases) [Require [Microsoft Visual C++ 2015 Redistributable](https://www.microsoft.com/en-gb/download/details.aspx?id=48145)]
 
 ## **Description**
 
